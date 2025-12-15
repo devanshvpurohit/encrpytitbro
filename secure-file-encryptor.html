@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureVault — AES-GCM File Encryptor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f1a;
+            --bg-secondary: #111827;
+            --bg-card: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(10, 15, 26, 0.95));
+            --accent-primary: #3b82f6;
+            --accent-secondary: #8b5cf6;
+            --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --glow-primary: rgba(59, 130, 246, 0.3);
+            --glow-secondary: rgba(139, 92, 246, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .bg-effects {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: var(--accent-primary);
+            top: -100px;
+            left: -100px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: var(--accent-secondary);
+            bottom: -50px;
+            right: -50px;
+            animation-delay: -10s;
+        }
+
+        .orb-3 {
+            width: 200px;
+            height: 200px;
+            background: #06b6d4;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            25% {
+                transform: translate(30px, -30px) scale(1.1);
+            }
+
+            50% {
+                transform: translate(-20px, 20px) scale(0.9);
+            }
+
+            75% {
+                transform: translate(20px, 30px) scale(1.05);
+            }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+            animation: cardEntry 0.6s ease-out;
+        }
+
+        @keyframes cardEntry {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-gradient);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px var(--glow-primary);
+        }
+
+        .logo-icon svg {
+            width: 28px;
+            height: 28px;
+            color: white;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 15px;
+            line-height: 1.6;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 32px;
+        }
+
+        @media (max-width: 800px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 24px;
+            }
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        /* File Drop Zone */
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.02);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: var(--accent-primary);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .drop-zone.dragover {
+            transform: scale(1.02);
+        }
+
+        .drop-zone.has-file {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .drop-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 16px;
+            background: var(--accent-gradient);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px var(--glow-primary);
+            transition: transform 0.3s ease;
+        }
+
+        .drop-zone:hover .drop-icon {
+            transform: scale(1.1);
+        }
+
+        .drop-icon svg {
+            width: 32px;
+            height: 32px;
+            color: white;
+        }
+
+        .drop-text {
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .drop-hint {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 12px;
+            margin-top: 16px;
+        }
+
+        .file-info svg {
+            width: 20px;
+            height: 20px;
+            color: var(--success);
+        }
+
+        .file-name {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-size {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Input Fields */
+        .form-group {
+            margin-top: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        input[type="password"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--glow-primary);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            transition: color 0.2s;
+        }
+
+        .toggle-password:hover {
+            color: var(--text-primary);
+        }
+
+        /* Password Strength */
+        .password-strength {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .strength-bar {
+            flex: 1;
+            height: 4px;
+            background: var(--border-color);
+            border-radius: 2px;
+            transition: background 0.3s ease;
+        }
+
+        .strength-bar.active.weak {
+            background: var(--error);
+        }
+
+        .strength-bar.active.medium {
+            background: var(--warning);
+        }
+
+        .strength-bar.active.strong {
+            background: var(--success);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 8px 24px var(--glow-primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px var(--glow-primary);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .series-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--accent-gradient);
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            color: white;
+            margin-bottom: 12px;
+        }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .param-grid input {
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+
+        .format-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 14px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Log Console */
+        .log-console {
+            margin-top: 28px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .log-header {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .log-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        .log-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .log-content {
+            padding: 16px;
+            height: 150px;
+            overflow-y: auto;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .log-entry {
+            color: var(--text-muted);
+            padding: 2px 0;
+        }
+
+        .log-entry.success {
+            color: var(--success);
+        }
+
+        .log-entry.error {
+            color: var(--error);
+        }
+
+        .log-entry.info {
+            color: var(--accent-primary);
+        }
+
+        .log-entry::before {
+            content: '› ';
+            opacity: 0.5;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .footer p {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        .footer a {
+            color: var(--accent-primary);
+            text-decoration: none;
+        }
+
+        /* Progress Indicator */
+        .progress-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            border-radius: 24px;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        .progress-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .progress-text {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-effects">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="progress-overlay" id="progressOverlay">
+                <div class="spinner"></div>
+                <div class="progress-text" id="progressText">Processing...</div>
+            </div>
+
+            <header class="header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <h1>SecureVault</h1>
+                </div>
+                <p class="subtitle">Military-grade AES-256-GCM encryption with PBKDF2 key derivation. Your files stay
+                    secure with cryptographically proven algorithms.</p>
+            </header>
+
+            <div class="main-grid">
+                <div class="left-column">
+                    <div class="section-title">Select File</div>
+                    <div class="drop-zone" id="dropZone">
+                        <input type="file" id="fileInput" hidden>
+                        <div class="drop-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                        </div>
+                        <div class="drop-text">Drop your file here or click to browse</div>
+                        <div class="drop-hint">Supports any file type • Max recommended: 100MB</div>
+                        <div class="file-info" id="fileInfo" style="display: none;">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="file-name" id="fileName"></span>
+                            <span class="file-size" id="fileSize"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Encryption Password</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="password" placeholder="Enter a strong password">
+                            <button type="button" class="toggle-password" id="togglePassword">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="password-strength" id="strengthBars">
+                            <div class="strength-bar"></div>
+                            <div class="strength-bar"></div>
+                            <div class="strength-bar"></div>
+                            <div class="strength-bar"></div>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" id="encryptBtn">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Encrypt
+                        </button>
+                        <button class="btn btn-secondary" id="decryptBtn">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                            </svg>
+                            Decrypt
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sidebar">
+                    <div class="info-card">
+                        <div class="section-title">Configuration</div>
+                        <div class="series-badge" id="seriesBadge">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                            </svg>
+                            <span id="seriesDisplay">Auto Select</span>
+                        </div>
+
+                        <label for="seriesSelect" style="margin-top: 12px;">Salt Series</label>
+                        <select id="seriesSelect">
+                            <option value="random">🎲 Random (Recommended)</option>
+                            <option value="LU">Lucas Sequence</option>
+                            <option value="TR">Tribonacci Sequence</option>
+                            <option value="TE">Tetranacci Sequence</option>
+                        </select>
+
+                        <div class="param-grid">
+                            <div>
+                                <label for="iterations">Iterations</label>
+                                <input type="number" id="iterations" value="200000" min="10000" step="10000">
+                            </div>
+                            <div>
+                                <label for="saltLen">Salt (bytes)</label>
+                                <input type="number" id="saltLen" value="16" min="8" max="64" step="4">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="section-title">File Format</div>
+                        <div class="format-box">"EN"(2) | ver(1) | series(2)
+                            iter(4) | saltLen(1) | salt
+                            ivLen(1) | iv(12) | nameLen(2)
+                            filename | ciphertext+tag</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="log-console">
+                <div class="log-header">
+                    <div class="log-dot"></div>
+                    <span class="log-title">Activity Log</span>
+                </div>
+                <div class="log-content" id="logContent">
+                    <div class="log-entry info">SecureVault initialized — ready for encryption</div>
+                </div>
+            </div>
+
+            <footer class="footer">
+                <p>Uses Web Crypto API with AES-256-GCM and PBKDF2-SHA256. For critical data, consider additional tools
+                    like GPG or full-disk encryption.</p>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        const SERIES = [{ id: 'LU', name: 'Lucas' }, { id: 'TR', name: 'Tribonacci' }, { id: 'TE', name: 'Tetranacci' }];
+        const $ = id => document.getElementById(id);
+        const dropZone = $('dropZone'), fileInput = $('fileInput'), password = $('password');
+        const encryptBtn = $('encryptBtn'), decryptBtn = $('decryptBtn');
+        const seriesSelect = $('seriesSelect'), iterations = $('iterations'), saltLen = $('saltLen');
+        const logContent = $('logContent'), progressOverlay = $('progressOverlay'), progressText = $('progressText');
+        const seriesDisplay = $('seriesDisplay'), fileInfo = $('fileInfo'), fileName = $('fileName'), fileSize = $('fileSize');
+        const strengthBars = $('strengthBars').children;
+
+        let selectedFile = null;
+
+        function log(msg, type = '') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = msg;
+            logContent.appendChild(entry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(2) + ' MB';
+        }
+
+        function showProgress(msg) { progressText.textContent = msg; progressOverlay.classList.add('active'); }
+        function hideProgress() { progressOverlay.classList.remove('active'); }
+
+        // File handling
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault(); dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+        function handleFile(file) {
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatSize(file.size);
+            fileInfo.style.display = 'flex';
+            dropZone.classList.add('has-file');
+            log(`File loaded: ${file.name} (${formatSize(file.size)})`, 'info');
+        }
+
+        // Password visibility & strength
+        $('togglePassword').addEventListener('click', () => {
+            password.type = password.type === 'password' ? 'text' : 'password';
+        });
+
+        password.addEventListener('input', () => {
+            const val = password.value;
+            let strength = 0;
+            if (val.length >= 6) strength++;
+            if (val.length >= 10) strength++;
+            if (/[A-Z]/.test(val) && /[a-z]/.test(val)) strength++;
+            if (/[0-9!@#$%^&*]/.test(val)) strength++;
+
+            const cls = strength <= 1 ? 'weak' : strength <= 2 ? 'medium' : 'strong';
+            [...strengthBars].forEach((bar, i) => {
+                bar.className = 'strength-bar' + (i < strength ? ` active ${cls}` : '');
+            });
+        });
+
+        // Series generators
+        function lucasBytes(len) { const out = new Uint8Array(len); let a = 2, b = 1; for (let i = 0; i < len; i++) { const v = (i === 0) ? a : (i === 1) ? b : (a + b); out[i] = v & 0xFF; if (i >= 1) { a = b; b = v; } } return out; }
+        function tribonacciBytes(len) { const out = new Uint8Array(len); let a = 0, b = 0, c = 1; for (let i = 0; i < len; i++) { const v = (i === 0) ? a : (i === 1) ? b : (i === 2) ? c : (a + b + c); out[i] = v & 0xFF; if (i >= 2) { a = b; b = c; c = v; } } return out; }
+        function tetranacciBytes(len) { const out = new Uint8Array(len); let a = 0, b = 0, c = 0, d = 1; for (let i = 0; i < len; i++) { const v = (i === 0) ? a : (i === 1) ? b : (i === 2) ? c : (i === 3) ? d : (a + b + c + d); out[i] = v & 0xFF; if (i >= 3) { a = b; b = c; c = d; d = v; } } return out; }
+        function seriesBytesById(id, len) { return id === 'LU' ? lucasBytes(len) : id === 'TR' ? tribonacciBytes(len) : tetranacciBytes(len); }
+
+        // Crypto helpers
+        async function deriveKey(pwd, salt, iter) {
+            const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pwd), 'PBKDF2', false, ['deriveKey']);
+            return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+        }
+
+        function concat(arrays) { const total = arrays.reduce((s, a) => s + a.length, 0); const out = new Uint8Array(total); let off = 0; arrays.forEach(a => { out.set(a, off); off += a.length; }); return out; }
+        function uint32BE(n) { return new Uint8Array([(n >>> 24) & 0xFF, (n >>> 16) & 0xFF, (n >>> 8) & 0xFF, n & 0xFF]); }
+        function uint16BE(n) { return new Uint8Array([(n >>> 8) & 0xFF, n & 0xFF]); }
+        function randInt(max) { return crypto.getRandomValues(new Uint32Array(1))[0] % max; }
+
+        // Encrypt
+        encryptBtn.addEventListener('click', async () => {
+            if (!selectedFile) { log('Please select a file first', 'error'); return; }
+            if (password.value.length < 6) { log('Password must be at least 6 characters', 'error'); return; }
+
+            showProgress('Encrypting...');
+            try {
+                let series = seriesSelect.value;
+                if (series === 'random') series = SERIES[randInt(3)].id;
+                seriesDisplay.textContent = SERIES.find(s => s.id === series)?.name || series;
+
+                const iter = Math.max(10000, parseInt(iterations.value) || 200000);
+                const sLen = Math.max(8, Math.min(64, parseInt(saltLen.value) || 16));
+                const fileBytes = new Uint8Array(await selectedFile.arrayBuffer());
+
+                const randomSalt = crypto.getRandomValues(new Uint8Array(sLen));
+                const seriesSalt = seriesBytesById(series, sLen);
+                const combinedSalt = new Uint8Array(sLen);
+                for (let i = 0; i < sLen; i++) combinedSalt[i] = randomSalt[i] ^ seriesSalt[i];
+
+                log(`Deriving key: ${iter} iterations, ${sLen} byte salt`, 'info');
+                const key = await deriveKey(password.value, combinedSalt, iter);
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, fileBytes));
+
+                const nameBytes = new TextEncoder().encode(selectedFile.name);
+                const header = concat([
+                    new Uint8Array([69, 78, 1, series.charCodeAt(0), series.charCodeAt(1)]),
+                    uint32BE(iter), new Uint8Array([sLen]), randomSalt,
+                    new Uint8Array([12]), iv, uint16BE(nameBytes.length), nameBytes
+                ]);
+
+                const blob = new Blob([concat([header, cipher])]);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = selectedFile.name + '.vault';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+                log(`Encrypted successfully: ${selectedFile.name}.vault`, 'success');
+            } catch (e) {
+                console.error(e);
+                log('Encryption failed: ' + e.message, 'error');
+            }
+            hideProgress();
+        });
+
+        // Decrypt
+        decryptBtn.addEventListener('click', async () => {
+            if (!selectedFile) { log('Please select an encrypted file', 'error'); return; }
+            if (!password.value) { log('Enter the decryption password', 'error'); return; }
+
+            showProgress('Decrypting...');
+            try {
+                const buf = new Uint8Array(await selectedFile.arrayBuffer());
+                if (buf.length < 20 || String.fromCharCode(buf[0], buf[1]) !== 'EN') {
+                    throw new Error('Invalid file format');
+                }
+                if (buf[2] !== 1) throw new Error('Unsupported version');
+
+                let off = 3;
+                const series = String.fromCharCode(buf[off], buf[off + 1]); off += 2;
+                const iter = (buf[off] << 24) | (buf[off + 1] << 16) | (buf[off + 2] << 8) | buf[off + 3]; off += 4;
+                const sLen = buf[off++];
+                const randomSalt = buf.slice(off, off + sLen); off += sLen;
+                const ivLen = buf[off++];
+                const iv = buf.slice(off, off + ivLen); off += ivLen;
+                const nameLen = (buf[off] << 8) | buf[off + 1]; off += 2;
+                const origName = new TextDecoder().decode(buf.slice(off, off + nameLen)); off += nameLen;
+                const cipher = buf.slice(off);
+
+                const seriesSalt = seriesBytesById(series, sLen);
+                const combinedSalt = new Uint8Array(sLen);
+                for (let i = 0; i < sLen; i++) combinedSalt[i] = randomSalt[i] ^ seriesSalt[i];
+
+                seriesDisplay.textContent = SERIES.find(s => s.id === series)?.name || series;
+                log(`Decrypting: ${iter} iterations, series: ${series}`, 'info');
+
+                const key = await deriveKey(password.value, combinedSalt, iter);
+                const plain = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher));
+
+                const blob = new Blob([plain]);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = origName;
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+                log(`Decrypted successfully: ${origName}`, 'success');
+            } catch (e) {
+                console.error(e);
+                log('Decryption failed — wrong password or corrupted file', 'error');
+            }
+            hideProgress();
+        });
+    </script>
+</body>
+
+</html>
